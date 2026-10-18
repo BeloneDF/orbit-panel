@@ -12,6 +12,10 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/* \
   && npm ci
 
+# Mantém Prisma no runtime para que as migrations sejam aplicadas antes do app.
+FROM dependencies AS production-dependencies
+RUN npm prune --omit=dev
+
 FROM base AS builder
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
@@ -30,15 +34,24 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
 RUN groupadd --system --gid 1001 nodejs \
-  && useradd --system --uid 1001 --gid nodejs nextjs
+  && useradd --system --uid 1001 --gid nodejs nextjs \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
 
 # A saída standalone inclui apenas o necessário para executar o Next em produção.
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/src/generated/prisma ./src/generated/prisma
+COPY --from=production-dependencies --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --chown=nextjs:nodejs --chmod=755 docker-entrypoint.sh ./docker-entrypoint.sh
 
-USER nextjs
 EXPOSE 3000
 
+USER nextjs
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "server.js"]

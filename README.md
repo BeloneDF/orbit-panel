@@ -24,7 +24,7 @@ docker run -d --name orbit-panel --restart unless-stopped \
   orbit-panel
 ```
 
-Preencha no `.env` de produção ao menos `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `EASYPANEL_URL` e `EASYPANEL_API_KEY`. A imagem não inicia PostgreSQL nem executa migrações; aplique `npx prisma migrate deploy` separadamente no seu fluxo de deploy quando necessário.
+Preencha no `.env` de produção ao menos `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `EASYPANEL_URL` e `EASYPANEL_API_KEY`. A imagem não inicia PostgreSQL: no início de cada container ela executa `prisma migrate deploy` contra o banco externo e, só então, inicia o painel.
 
 ## Atualizar o catálogo da API
 
