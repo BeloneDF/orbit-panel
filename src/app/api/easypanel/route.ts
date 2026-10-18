@@ -22,7 +22,7 @@ const rpcFallbacks: Record<string, string> = {
   queryComposeServiceLogs: "logs/queryComposeServiceLogs",
 };
 // Polling de monitoramento é realizado a cada segundo; nunca deve virar evento de auditoria.
-const nonAuditableOperations = new Set(["getLegacyMonitorServiceStats", "getMetricsServiceStats", "getAllServicesStats", "getMetricsStats", "getMetricsSystemStats", "getMonitorTableData"]);
+const nonAuditableOperations = new Set(["getLegacyMonitorServiceStats", "getLegacyMonitorSystemStats", "getStorageStats", "getMetricsServiceStats", "getAllServicesStats", "getMetricsStats", "getMetricsSystemStats", "getMonitorTableData"]);
 
 async function readResponse(response: Response) {
   const text = await response.text();
@@ -106,11 +106,13 @@ export async function POST(request: Request) {
     const rpcOperation = rpcFallbacks[endpoint.id];
     if (rpcOperation) {
       try {
+        const legacyTablePayload = endpoint.id === "getMonitorTableData" ? {} : { json: endpoint.method === "GET" ? input.query ?? null : input.body ?? null };
         const rpc = await fetch(`${connection.baseUrl}/rpc/${rpcOperation}`, {
           method: "POST",
           // The legacy RPC client sends the API key verbatim (not Bearer).
           headers: { Authorization: connection.token, "Content-Type": "application/json" },
-          body: JSON.stringify({ json: endpoint.method === "GET" ? input.query ?? null : input.body ?? null }),
+          // A tabela antiga de monitoramento não usa o envelope tRPC { json }.
+          body: JSON.stringify(legacyTablePayload),
           cache: "no-store",
           signal: AbortSignal.timeout(30_000),
         });

@@ -26,6 +26,7 @@ const UsersManager = dynamic(() => import("./users-manager"), { loading: Resourc
 const AuditManager = dynamic(() => import("./audit-manager"), { loading: ResourceLoader });
 const AccountSecurity = dynamic(() => import("./account-security"), { loading: ResourceLoader });
 const InfrastructureManager = dynamic(() => import("./infrastructure-manager"), { loading: ResourceLoader });
+const SystemMonitor = dynamic(() => import("./system-monitor"), { loading: ResourceLoader });
 
 type ConnectionState = { connected: boolean; baseUrl?: string };
 type Actor = { id:string; name:string; email:string; role:"ADMINISTRADOR"|"DEV"; sessionId:string };
@@ -124,6 +125,7 @@ function Dashboard({ connected, onExplorer, onServices }: { connected: boolean; 
       <Stat icon={Activity} label="ONLINE" value={connected ? String(online) : "16"} suffix="" detail="serviços ativos" spark={[17,21,22,25,28,32,36]} />
       <Stat icon={Braces} label="OPERAÇÕES DA API" value="375" suffix="" detail="catálogo oficial" spark={[47,47,47,45,47,47,47]} />
     </section>
+    <SystemMonitor connected={connected} />
     <section className="dashboard-grid">
       <article className="panel topology-panel"><div className="panel-heading"><div><span className="panel-kicker">MAPA AO VIVO</span><h2>Topologia do servidor</h2></div><span className="status-good"><i />{connected ? "conectado" : "demo"}</span></div><Topology services={displayServices} /><div className="topology-legend"><span><i className="cyan" />Aplicações <b>{connected ? liveServices.filter((service) => /app|compose|box|wordpress/.test(service.type)).length : 9}</b></span><span><i className="violet" />Dados <b>{connected ? liveServices.filter((service) => /postgres|mysql|maria|mongo|redis/.test(service.type)).length : 5}</b></span><span><i className="coral" />Total <b>{connected ? liveServices.length : 18}</b></span></div></article>
       <article className="panel activity-panel"><div className="panel-heading"><div><span className="panel-kicker">ÚLTIMOS EVENTOS</span><h2>Atividade</h2></div><button onClick={onExplorer}>Ver todas</button></div><div className="timeline">
