@@ -6,7 +6,7 @@ import useSWR from "swr";
 import { asRecord, callEasypanel, findNamedArray, unwrapApiData } from "@/lib/easypanel-client";
 
 type Point = { value: number; at: number };
-type MonitorMetric = { label: string; value: string; detail: string; percent?: number; tone: "cyan" | "blue" | "mint" | "violet"; icon: typeof Cpu };
+type MonitorMetric = { label: string; value: string; detail: string; percent?: number; tone: "teal" | "ocean" | "green" | "purple"; icon: typeof Cpu };
 type MonitorRow = { name: string; project: string; cpu?: number; memory?: number; network?: number; status: string };
 type MonitorSnapshot = { metrics: MonitorMetric[]; rows: MonitorRow[]; sampledAt: Date };
 const metricHistory: Record<string, Point[]> = {};
@@ -43,8 +43,8 @@ export default function SystemMonitor({ connected }: { connected: boolean }) {
   </section>;
 }
 
-function MetricCard({ metric, points }: { metric: MonitorMetric; points: Point[] }) { const Icon = metric.icon; return <article className={`monitor-metric ${metric.tone}`}><div className="monitor-metric-top"><span>{metric.label}</span><Icon size={16}/></div><b>{metric.value}</b><small>{metric.detail}</small><Sparkline points={points} tone={metric.tone}/></article>; }
-function Sparkline({ points, tone }: { points: Point[]; tone: MonitorMetric["tone"] }) { const values = points.map((point) => point.value); const max = Math.max(...values, 1); const min = Math.min(...values, 0); const distance = Math.max(max - min, 1); const polyline = values.map((value, index) => `${(index / Math.max(values.length - 1, 1)) * 100},${39 - ((value - min) / distance) * 32}`).join(" "); return <svg className={`monitor-spark ${tone}`} viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true"><polyline points={polyline || "0,36 100,36"}/></svg>; }
+function MetricCard({ metric, points }: { metric: MonitorMetric; points: Point[] }) { const Icon = metric.icon; return <article className={`monitor-metric tone-${metric.tone}`}><div className="monitor-metric-top"><span>{metric.label}</span><Icon size={16}/></div><b>{metric.value}</b><small>{metric.detail}</small><Sparkline points={points} tone={metric.tone}/></article>; }
+function Sparkline({ points, tone }: { points: Point[]; tone: MonitorMetric["tone"] }) { const values = points.map((point) => point.value); const max = Math.max(...values, 1); const min = Math.min(...values, 0); const distance = Math.max(max - min, 1); const polyline = values.map((value, index) => `${(index / Math.max(values.length - 1, 1)) * 100},${39 - ((value - min) / distance) * 32}`).join(" "); return <svg className={`monitor-spark tone-${tone}`} viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true"><polyline points={polyline || "0,36 100,36"}/></svg>; }
 function MonitorRowView({ row }: { row: MonitorRow }) { return <div className="monitor-row"><span className="monitor-service"><i>{row.name.slice(0, 1).toUpperCase()}</i><span><b>{row.name}</b><small>{row.project || "sem projeto"}</small></span></span><MetricCell value={row.cpu} suffix="%"/><MetricCell value={row.memory} suffix="%"/><span className="monitor-network">{row.network === undefined ? "—" : `${formatBytes(row.network)}/s`}</span><span className={`monitor-status ${statusTone(row.status)}`}><i />{row.status || "desconhecido"}</span></div>; }
 function MetricCell({ value, suffix }: { value?: number; suffix: string }) { const bounded = Math.max(0, Math.min(100, value ?? 0)); return <span className="monitor-value"><i><em style={{ width: `${bounded}%` }}/></i><b>{value === undefined ? "—" : `${formatNumber(value)}${suffix}`}</b></span>; }
 function MonitorLoading() { return <div className="monitor-state"><Activity className="spin" size={24}/><b>Consultando telemetria do host…</b><p>Coletando estatísticas do sistema, armazenamento e containers.</p></div>; }
@@ -67,10 +67,10 @@ function buildMetrics(system: unknown, storage: unknown): MonitorMetric[] {
   const networkOut = numberAt(networkInfo.outputMb) ?? findNumber(source, ["networkOut", "txBytes", "sent", "out"], ["network", "net"]);
   const cores = numberAt(cpuInfo.count) ?? findNumber(source, ["cores", "cpuCores", "cpus"], []);
   return [
-    { label: "CPU", value: cpu === undefined ? "—" : `${formatNumber(asPercent(cpu))}%`, detail: cores ? `${cores} core${cores === 1 ? "" : "s"} disponíveis` : "uso atual do host", percent: cpu === undefined ? undefined : asPercent(cpu), tone: "cyan", icon: Cpu },
-    { label: "MEMÓRIA", value: memoryPercent === undefined ? "—" : `${formatNumber(asPercent(memoryPercent))}%`, detail: memoryUsed === undefined ? "uso da memória" : `${formatMegabytes(memoryUsed)}${memoryTotal ? ` / ${formatMegabytes(memoryTotal)}` : ""}`, percent: memoryPercent === undefined ? undefined : asPercent(memoryPercent), tone: "blue", icon: MemoryStick },
-    { label: "DISCO", value: diskPercent === undefined ? "—" : `${formatNumber(asPercent(diskPercent))}%`, detail: diskUsed === undefined ? "uso do armazenamento" : `${formatGigabytes(diskUsed)}${diskTotal ? ` / ${formatGigabytes(diskTotal)}` : ""}`, percent: diskPercent === undefined ? undefined : asPercent(diskPercent), tone: "mint", icon: HardDrive },
-    { label: "REDE", value: networkIn === undefined && networkOut === undefined ? "—" : `${formatMegabytes(networkIn ?? 0)}/s`, detail: `entrada ${formatMegabytes(networkIn ?? 0)} · saída ${formatMegabytes(networkOut ?? 0)}`, percent: undefined, tone: "violet", icon: Network },
+    { label: "CPU", value: cpu === undefined ? "—" : `${formatNumber(asPercent(cpu))}%`, detail: cores ? `${cores} core${cores === 1 ? "" : "s"} disponíveis` : "uso atual do host", percent: cpu === undefined ? undefined : asPercent(cpu), tone: "teal", icon: Cpu },
+    { label: "MEMÓRIA", value: memoryPercent === undefined ? "—" : `${formatNumber(asPercent(memoryPercent))}%`, detail: memoryUsed === undefined ? "uso da memória" : `${formatMegabytes(memoryUsed)}${memoryTotal ? ` / ${formatMegabytes(memoryTotal)}` : ""}`, percent: memoryPercent === undefined ? undefined : asPercent(memoryPercent), tone: "ocean", icon: MemoryStick },
+    { label: "DISCO", value: diskPercent === undefined ? "—" : `${formatNumber(asPercent(diskPercent))}%`, detail: diskUsed === undefined ? "uso do armazenamento" : `${formatGigabytes(diskUsed)}${diskTotal ? ` / ${formatGigabytes(diskTotal)}` : ""}`, percent: diskPercent === undefined ? undefined : asPercent(diskPercent), tone: "green", icon: HardDrive },
+    { label: "REDE", value: networkIn === undefined && networkOut === undefined ? "—" : `${formatMegabytes(networkIn ?? 0)}/s`, detail: `entrada ${formatMegabytes(networkIn ?? 0)} · saída ${formatMegabytes(networkOut ?? 0)}`, percent: undefined, tone: "purple", icon: Network },
   ];
 }
 
