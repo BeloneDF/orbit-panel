@@ -26,6 +26,8 @@ docker run -d --name orbit-panel --restart unless-stopped \
 
 Preencha no `.env` de produção ao menos `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `EASYPANEL_URL` e `EASYPANEL_API_KEY`. A imagem não inicia PostgreSQL: no início de cada container ela executa `prisma migrate deploy` contra o banco externo e, só então, inicia o painel.
 
+O build já limita o Next.js a um worker e o heap do Node a 768 MB para caber em builders menores. Se o EasyPanel ainda exibir `Killed` durante a construção, aumente a memória do serviço de build/deploy para pelo menos 1 GB (2 GB é o recomendado).
+
 ## Atualizar o catálogo da API
 
 ```bash

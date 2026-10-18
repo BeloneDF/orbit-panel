@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {
     optimizePackageImports: ["lucide-react"],
+    // Builders com pouca RAM (como no EasyPanel) não devem abrir vários
+    // workers de geração estática ao mesmo tempo.
+    cpus: 1,
+    memoryBasedWorkersCount: false,
   },
 };
 

@@ -23,6 +23,8 @@ COPY . .
 # usada para conectar e não é levada para a imagem final.
 ARG DATABASE_URL=postgresql://build:build@localhost:5432/build
 ENV DATABASE_URL=$DATABASE_URL
+# Evita que a compilação extrapole a RAM alocada ao builder do EasyPanel.
+ENV NODE_OPTIONS=--max-old-space-size=768
 RUN npx prisma generate
 RUN npm run build
 
