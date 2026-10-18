@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { audit, hashToken, token } from "@/lib/auth";
+import { db } from "@/lib/db";
+export async function POST(request:Request){try{const {email}=z.object({email:z.string().email()}).parse(await request.json());const user=await db.user.findFirst({where:{email:email.toLowerCase(),status:"ACTIVE",deletedAt:null}});if(user){const raw=token();await db.$transaction([db.accessToken.updateMany({where:{userId:user.id,type:"RESET_PASSWORD",usedAt:null},data:{usedAt:new Date()}}),db.accessToken.create({data:{userId:user.id,tokenHash:hashToken(raw),type:"RESET_PASSWORD",expiresAt:new Date(Date.now()+3_600_000)}})]);await audit({action:"PASSWORD_RESET_REQUESTED",category:"SECURITY",resource:"User",resourceId:user.id});/* Entrega do link deve ser feita pelo provedor de e-mail corporativo. */}return NextResponse.json({ok:true,message:"Se houver uma conta elegível, você receberá instruções pelo canal corporativo."});}catch{return NextResponse.json({ok:true,message:"Se houver uma conta elegível, você receberá instruções pelo canal corporativo."});}}

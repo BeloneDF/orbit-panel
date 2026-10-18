@@ -1,0 +1,40 @@
+{
+  "name": "easypanel-control",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "sync:api": "node scripts/sync-easypanel-api.mjs",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "admin:create": "tsx scripts/create-admin.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "latest",
+    "@fontsource-variable/space-grotesk": "latest",
+    "@prisma/client": "^6.19.3",
+    "argon2": "^0.45.1",
+    "jose": "^6.2.12",
+    "lucide-react": "latest",
+    "next": "latest",
+    "prisma": "^6.19.3",
+    "react": "latest",
+    "react-dom": "latest",
+    "swr": "^2.5.1",
+    "ws": "^8.22.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@types/ws": "^8.18.2",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "tsx": "^4.23.15",
+    "typescript": "latest"
+  }
+}

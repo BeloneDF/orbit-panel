@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+}
+datasource db {
+ provider = "postgresql"
+ url = env("DATABASE_URL")
+}
+enum Role {
+ ADMINISTRADOR
+ DEV
+}
+enum UserStatus {
+ ACTIVE
+ INACTIVE
+ BLOCKED
+}
+enum AccessTokenType {
+ ACTIVATE
+ RESET_PASSWORD
+}
+model User {
+ id String @id @default(uuid())
+ name String
+ email String @unique
+ passwordHash String
+ role Role @default(DEV)
+ status UserStatus @default(INACTIVE)
+ mustChangePassword Boolean @default(true)
+ lastLoginAt DateTime?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ deletedAt DateTime?
+ sessions Session[]
+ accessTokens AccessToken[]
+ auditLogs AuditLog[]
+ @@index([status])
+ @@index([createdAt])
+}
+model Session {
+ id String @id @default(uuid())
+ userId String
+ refreshTokenHash String @unique
+ ipAddress String?
+ userAgent String?
+ expiresAt DateTime
+ revokedAt DateTime?
+ createdAt DateTime @default(now())
+ user User @relation(fields:[userId], references:[id], onDelete: Restrict)
+ @@index([userId])
+ @@index([expiresAt])
+}
+model AccessToken {
+ id String @id @default(uuid())
+ userId String
+ tokenHash String @unique
+ type AccessTokenType
+ expiresAt DateTime
+ usedAt DateTime?
+ createdAt DateTime @default(now())
+ user User @relation(fields:[userId], references:[id], onDelete: Restrict)
+ @@index([userId])
+ @@index([expiresAt])
+}
+model AuditLog {
+ id String @id @default(uuid())
+ userId String?
+ sessionId String?
+ action String
+ category String
+ resource String?
+ resourceId String?
+ method String?
+ route String?
+ statusCode Int?
+ ipAddress String?
+ userAgent String?
+ requestId String?
+ metadata Json?
+ previousData Json?
+ newData Json?
+ success Boolean @default(true)
+ errorMessage String?
+ createdAt DateTime @default(now())
+ user User? @relation(fields:[userId], references:[id], onDelete: SetNull)
+ @@index([userId])
+ @@index([createdAt])
+ @@index([action])
+ @@index([resource])
+}
