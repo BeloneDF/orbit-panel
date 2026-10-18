@@ -1,6 +1,7 @@
 "use client";
 
-import { Activity, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Server, TableProperties } from "lucide-react";
+import { Activity, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Search, Server, TableProperties, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { asRecord, callEasypanel, findNamedArray, unwrapApiData } from "@/lib/easypanel-client";
 
@@ -26,6 +27,8 @@ async function loadMonitor(): Promise<MonitorSnapshot> {
 
 export default function SystemMonitor({ connected }: { connected: boolean }) {
   const { data, error, isLoading, mutate, isValidating } = useSWR(connected ? "easypanel/monitor/system" : null, loadMonitor, { refreshInterval: 1000, dedupingInterval: 750, revalidateOnFocus: false });
+  const [filter, setFilter] = useState("");
+  const rows = useMemo(() => (data?.rows ?? []).filter((row) => `${row.project} ${row.name} ${row.status}`.toLocaleLowerCase("pt-BR").includes(filter.trim().toLocaleLowerCase("pt-BR"))), [data?.rows, filter]);
   if (!connected) return null;
 
   return <section className="monitor-panel" aria-label="Monitoramento do servidor">
@@ -35,7 +38,7 @@ export default function SystemMonitor({ connected }: { connected: boolean }) {
     </header>
     {isLoading ? <MonitorLoading /> : error ? <MonitorError detail={error.message} retry={() => mutate()} /> : <>
       <div className="monitor-metrics">{(data?.metrics ?? []).map((metric) => <MetricCard key={metric.label} metric={metric} points={metricHistory[metric.label] ?? []}/>)}</div>
-      <div className="monitor-table-wrap"><div className="monitor-table-head"><div><TableProperties size={16}/><span>Containers e serviços</span><small>{data?.rows.length ?? 0} carga{data?.rows.length === 1 ? "" : "s"} retornada{data?.rows.length === 1 ? "" : "s"} pelo monitor</small></div><span className="monitor-source"><Server size={13}/>monitorOld/getMonitorTableData</span></div><div className="monitor-table"><div className="monitor-columns"><span>Projeto / serviço</span><span>CPU</span><span>Memória</span><span>Rede</span><span>Status</span></div>{data?.rows.length ? data.rows.map((row, index) => <MonitorRowView key={`${row.project}/${row.name}/${index}`} row={row}/>) : <p className="monitor-empty">A instância não retornou containers monitoráveis neste momento.</p>}</div></div>
+      <div className="monitor-table-wrap"><div className="monitor-table-head"><div><TableProperties size={16}/><span>Containers e serviços</span><small>{rows.length} de {data?.rows.length ?? 0} carga{data?.rows.length === 1 ? "" : "s"} retornada{data?.rows.length === 1 ? "" : "s"} pelo monitor</small></div><div className="monitor-table-tools"><label className="monitor-filter"><Search size={14}/><input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filtrar projeto ou serviço" aria-label="Filtrar containers e serviços"/>{filter ? <button type="button" onClick={() => setFilter("")} aria-label="Limpar filtro"><X size={13}/></button> : null}</label><span className="monitor-source"><Server size={13}/>monitorOld/getMonitorTableData</span></div></div><div className="monitor-table"><div className="monitor-columns"><span>Projeto / serviço</span><span>CPU</span><span>Memória</span><span>Rede</span><span>Status</span></div><div className="monitor-table-body">{data?.rows.length ? rows.length ? rows.map((row, index) => <MonitorRowView key={`${row.project}/${row.name}/${index}`} row={row}/>) : <p className="monitor-empty">Nenhuma carga corresponde ao filtro informado.</p> : <p className="monitor-empty">A instância não retornou containers monitoráveis neste momento.</p>}</div></div></div>
     </>}
   </section>;
 }
@@ -51,21 +54,23 @@ function recordMetricHistory(metrics: MonitorMetric[]) { const now = Date.now();
 
 function buildMetrics(system: unknown, storage: unknown): MonitorMetric[] {
   const source = [system, storage];
-  const cpu = findNumber(source, ["cpuPercent", "cpuUsage", "cpu", "usage", "percent"], ["cpu"]);
-  const memoryUsed = findNumber(source, ["memoryUsed", "memoryUsage", "used", "usage"], ["memory", "mem"]);
-  const memoryTotal = findNumber(source, ["memoryTotal", "total"], ["memory", "mem"]);
-  const memoryPercent = findNumber(source, ["memoryPercent", "percent"], ["memory", "mem"]) ?? percentage(memoryUsed, memoryTotal);
-  const diskUsed = findNumber(source, ["diskUsed", "used", "usage"], ["disk", "storage", "root"]);
-  const diskTotal = findNumber(source, ["diskTotal", "total", "size"], ["disk", "storage", "root"]);
-  const diskPercent = findNumber(source, ["diskPercent", "percent"], ["disk", "storage", "root"]) ?? percentage(diskUsed, diskTotal);
-  const networkIn = findNumber(source, ["networkIn", "rxBytes", "received", "in"], ["network", "net"]);
-  const networkOut = findNumber(source, ["networkOut", "txBytes", "sent", "out"], ["network", "net"]);
-  const cores = findNumber(source, ["cores", "cpuCores", "cpus"], []);
+  const stats = asRecord(system);
+  const cpuInfo = asRecord(stats.cpuInfo); const memInfo = asRecord(stats.memInfo); const diskInfo = asRecord(stats.diskInfo); const networkInfo = asRecord(stats.network);
+  const cpu = numberAt(cpuInfo.usedPercentage) ?? findNumber(source, ["cpuPercent", "cpuUsage", "cpu", "usage", "percent"], ["cpu"]);
+  const memoryUsed = numberAt(memInfo.usedMemMb) ?? findNumber(source, ["memoryUsed", "memoryUsage", "used", "usage"], ["memory", "mem"]);
+  const memoryTotal = numberAt(memInfo.totalMemMb) ?? findNumber(source, ["memoryTotal", "total"], ["memory", "mem"]);
+  const memoryPercent = numberAt(memInfo.usedMemPercentage) ?? findNumber(source, ["memoryPercent", "percent"], ["memory", "mem"]) ?? percentage(memoryUsed, memoryTotal);
+  const diskUsed = numberAt(diskInfo.usedGb) ?? findNumber(source, ["diskUsed", "used", "usage"], ["disk", "storage", "root"]);
+  const diskTotal = numberAt(diskInfo.totalGb) ?? findNumber(source, ["diskTotal", "total", "size"], ["disk", "storage", "root"]);
+  const diskPercent = numberAt(diskInfo.usedPercentage) ?? findNumber(source, ["diskPercent", "percent"], ["disk", "storage", "root"]) ?? percentage(diskUsed, diskTotal);
+  const networkIn = numberAt(networkInfo.inputMb) ?? findNumber(source, ["networkIn", "rxBytes", "received", "in"], ["network", "net"]);
+  const networkOut = numberAt(networkInfo.outputMb) ?? findNumber(source, ["networkOut", "txBytes", "sent", "out"], ["network", "net"]);
+  const cores = numberAt(cpuInfo.count) ?? findNumber(source, ["cores", "cpuCores", "cpus"], []);
   return [
     { label: "CPU", value: cpu === undefined ? "—" : `${formatNumber(asPercent(cpu))}%`, detail: cores ? `${cores} core${cores === 1 ? "" : "s"} disponíveis` : "uso atual do host", percent: cpu === undefined ? undefined : asPercent(cpu), tone: "cyan", icon: Cpu },
-    { label: "MEMÓRIA", value: memoryPercent === undefined ? "—" : `${formatNumber(asPercent(memoryPercent))}%`, detail: memoryUsed === undefined ? "uso da memória" : `${formatBytes(memoryUsed)}${memoryTotal ? ` / ${formatBytes(memoryTotal)}` : ""}`, percent: memoryPercent === undefined ? undefined : asPercent(memoryPercent), tone: "blue", icon: MemoryStick },
-    { label: "DISCO", value: diskPercent === undefined ? "—" : `${formatNumber(asPercent(diskPercent))}%`, detail: diskUsed === undefined ? "uso do armazenamento" : `${formatBytes(diskUsed)}${diskTotal ? ` / ${formatBytes(diskTotal)}` : ""}`, percent: diskPercent === undefined ? undefined : asPercent(diskPercent), tone: "mint", icon: HardDrive },
-    { label: "REDE", value: networkIn === undefined && networkOut === undefined ? "—" : `${formatBytes(networkIn ?? 0)}/s`, detail: `entrada ${formatBytes(networkIn ?? 0)} · saída ${formatBytes(networkOut ?? 0)}`, percent: undefined, tone: "violet", icon: Network },
+    { label: "MEMÓRIA", value: memoryPercent === undefined ? "—" : `${formatNumber(asPercent(memoryPercent))}%`, detail: memoryUsed === undefined ? "uso da memória" : `${formatMegabytes(memoryUsed)}${memoryTotal ? ` / ${formatMegabytes(memoryTotal)}` : ""}`, percent: memoryPercent === undefined ? undefined : asPercent(memoryPercent), tone: "blue", icon: MemoryStick },
+    { label: "DISCO", value: diskPercent === undefined ? "—" : `${formatNumber(asPercent(diskPercent))}%`, detail: diskUsed === undefined ? "uso do armazenamento" : `${formatGigabytes(diskUsed)}${diskTotal ? ` / ${formatGigabytes(diskTotal)}` : ""}`, percent: diskPercent === undefined ? undefined : asPercent(diskPercent), tone: "mint", icon: HardDrive },
+    { label: "REDE", value: networkIn === undefined && networkOut === undefined ? "—" : `${formatMegabytes(networkIn ?? 0)}/s`, detail: `entrada ${formatMegabytes(networkIn ?? 0)} · saída ${formatMegabytes(networkOut ?? 0)}`, percent: undefined, tone: "violet", icon: Network },
   ];
 }
 
@@ -87,4 +92,6 @@ function asPercent(value: number) { return value <= 1 ? value * 100 : value; }
 function numeric(value: string) { const match = value.match(/[\d.,]+/); return match ? Number(match[0].replace(",", ".")) : undefined; }
 function formatNumber(value: number) { return value.toLocaleString("pt-BR", { maximumFractionDigits: 1 }); }
 function formatBytes(value: number) { if (!Number.isFinite(value)) return "—"; const units = ["B", "KB", "MB", "GB", "TB"]; let unit = 0; let result = Math.max(0, value); while (result >= 1024 && unit < units.length - 1) { result /= 1024; unit++; } return `${result.toLocaleString("pt-BR", { maximumFractionDigits: result < 10 && unit ? 1 : 0 })} ${units[unit]}`; }
+function formatMegabytes(value: number) { return value >= 1024 ? `${formatNumber(value / 1024)} GB` : `${formatNumber(value)} MB`; }
+function formatGigabytes(value: number) { return `${formatNumber(value)} GB`; }
 function statusTone(status: string) { return /running|active|online|ready|healthy|up|ativo/i.test(status) ? "ok" : /fail|error|down|stop|exit/i.test(status) ? "bad" : "wait"; }
