@@ -1,6 +1,9 @@
 generator client {
   provider = "prisma-client"
   output = "../src/generated/prisma"
+  // A imagem de produção usa Debian Bookworm com OpenSSL 3.
+  // "native" mantém o cliente utilizável também no ambiente local de build.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 datasource db {
  provider = "postgresql"
