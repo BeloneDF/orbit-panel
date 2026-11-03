@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Search, Server, TableProperties, X } from "lucide-react";
+import { Activity, Cpu, HardDrive, LoaderCircle, MemoryStick, Network, RefreshCw, Search, Server, TableProperties, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { asRecord, callEasypanel, findNamedArray, unwrapApiData } from "@/lib/easypanel-client";
@@ -47,7 +47,7 @@ function MetricCard({ metric, points }: { metric: MonitorMetric; points: Point[]
 function Sparkline({ points, tone }: { points: Point[]; tone: MonitorMetric["tone"] }) { const values = points.map((point) => point.value); const max = Math.max(...values, 1); const min = Math.min(...values, 0); const distance = Math.max(max - min, 1); const polyline = values.map((value, index) => `${(index / Math.max(values.length - 1, 1)) * 100},${39 - ((value - min) / distance) * 32}`).join(" "); return <svg className={`monitor-spark tone-${tone}`} viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true"><polyline points={polyline || "0,36 100,36"}/></svg>; }
 function MonitorRowView({ row }: { row: MonitorRow }) { return <div className="monitor-row"><span className="monitor-service"><i>{row.name.slice(0, 1).toUpperCase()}</i><span><b>{row.name}</b><small>{row.project || "sem projeto"}</small></span></span><MetricCell value={row.cpu} suffix="%"/><MetricCell value={row.memory} suffix="%"/><span className="monitor-network">{row.network === undefined ? "—" : `${formatBytes(row.network)}/s`}</span><span className={`monitor-status ${statusTone(row.status)}`}><i />{row.status || "desconhecido"}</span></div>; }
 function MetricCell({ value, suffix }: { value?: number; suffix: string }) { const bounded = Math.max(0, Math.min(100, value ?? 0)); return <span className="monitor-value"><i><em style={{ width: `${bounded}%` }}/></i><b>{value === undefined ? "—" : `${formatNumber(value)}${suffix}`}</b></span>; }
-function MonitorLoading() { return <div className="monitor-state"><Activity className="spin" size={24}/><b>Consultando telemetria do host…</b><p>Coletando estatísticas do sistema, armazenamento e containers.</p></div>; }
+function MonitorLoading() { return <div className="monitor-state"><LoaderCircle className="spin" size={24}/><b>Consultando telemetria do host…</b><p>Coletando estatísticas do sistema, armazenamento e containers.</p></div>; }
 function MonitorError({ detail, retry }: { detail: string; retry: () => void }) { return <div className="monitor-state error"><Activity size={24}/><b>Não foi possível atualizar o monitoramento</b><p>{detail}</p><button className="secondary-button" onClick={retry}><RefreshCw size={14}/>Tentar novamente</button></div>; }
 
 function recordMetricHistory(metrics: MonitorMetric[]) { const now = Date.now(); for (const metric of metrics) { const value = metric.percent ?? numeric(metric.value) ?? 0; metricHistory[metric.label] = [...(metricHistory[metric.label] ?? []), { value, at: now }].slice(-24); } }

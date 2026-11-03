@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import useSWR from "swr";
-import { AlertTriangle, ChevronLeft, ChevronRight, ClipboardList, Filter, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, ClipboardList, Filter, LoaderCircle, RefreshCw, Search, ShieldCheck } from "lucide-react";
 
 type AuditEvent={id:string;action:string;category:string;resource:string|null;statusCode:number|null;success:boolean;createdAt:string;user:{name:string;email:string;role:string}|null};
 type User={id:string;name:string;email:string};
@@ -23,4 +23,4 @@ export default function AuditManager(){
 }
 function FilterSelect({label,value,onChange,children}:{label:string;value:string;onChange:(value:string)=>void;children:React.ReactNode}){return <label><span>{label}</span><select value={value} onChange={event=>onChange(event.target.value)}>{children}</select></label>}
 function Stat({icon:Icon,label,value,detail}:{icon:typeof ClipboardList;label:string;value:string|number;detail:string}){return <article className="stat-card"><div className="stat-top"><Icon size={16}/><span>{label}</span></div><div className="stat-value"><b>{value}</b></div><div className="stat-bottom">{detail}</div></article>}
-function State({text}:{text:string}){return <section className="resource-state"><AlertTriangle size={26}/><h2>{text}</h2></section>}
+function State({text}:{text:string}){const loading=text.startsWith("Carregando");const Icon=loading?LoaderCircle:AlertTriangle;return <section className="resource-state"><Icon className={loading?"spin":""} size={26}/><h2>{text}</h2></section>}

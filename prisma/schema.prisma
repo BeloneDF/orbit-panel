@@ -40,6 +40,16 @@ model User {
  @@index([status])
  @@index([createdAt])
 }
+model EasypanelServer {
+ id String @id @default(uuid())
+ name String
+ panelUrl String
+ apiUrl String
+ apiKeyCiphertext String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([apiUrl])
+}
 model Session {
  id String @id @default(uuid())
  userId String

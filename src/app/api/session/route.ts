@@ -4,9 +4,12 @@ import {
   normalizeBaseUrl,
   SESSION_COOKIE,
 } from "@/lib/session";
+import { assertSameOrigin, requireActor } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    assertSameOrigin(request);
+    await requireActor();
     const input = (await request.json()) as { baseUrl?: string; token?: string };
     if (!input.baseUrl || !input.token) {
       return NextResponse.json({ error: "Informe a URL e o token da API." }, { status: 400 });
@@ -41,6 +44,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
+  try { await requireActor(); } catch { return NextResponse.json({ error: "Sessão expirada." }, { status: 401 }); }
   const response = NextResponse.json({ connected: false });
   response.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
   return response;

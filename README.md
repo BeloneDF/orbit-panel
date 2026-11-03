@@ -1,6 +1,6 @@
 # Easypanel Control
 
-Painel Next.js para observar e operar toda a API do Easypanel por um gateway seguro no servidor.
+Painel Next.js para observar e operar toda a API do Easypanel por um gateway seguro no servidor. Os servidores são corporativos, compartilhados por todos os usuários autenticados e alternáveis pela sidebar.
 
 ## Iniciar
 
@@ -24,7 +24,7 @@ docker run -d --name orbit-panel --restart unless-stopped \
   orbit-panel
 ```
 
-Preencha no `.env` de produção ao menos `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `EASYPANEL_URL` e `EASYPANEL_API_KEY`. A imagem não inicia PostgreSQL: no início de cada container ela executa `prisma migrate deploy` contra o banco externo e, só então, inicia o painel.
+Preencha no `.env` de produção ao menos `DATABASE_URL`, `SESSION_SECRET`, `JWT_SECRET` e `JWT_REFRESH_SECRET`. Os servidores e suas chaves são cadastrados pelo painel. A imagem não inicia PostgreSQL: no início de cada container ela executa `prisma migrate deploy` contra o banco externo e, só então, inicia o painel.
 
 O build já limita o Next.js a um worker e o heap do Node a 768 MB para caber em builders menores. Se o EasyPanel ainda exibir `Killed` durante a construção, aumente a memória do serviço de build/deploy para pelo menos 1 GB (2 GB é o recomendado).
 
@@ -48,7 +48,7 @@ O comando lê a especificação OpenAPI publicada na documentação oficial e re
 
 ## Segurança
 
-- Defina `SESSION_SECRET` com pelo menos 32 caracteres em produção.
+- Defina `SESSION_SECRET` com pelo menos 32 caracteres em produção. Ele é usado para criptografar as API keys cadastradas com AES-256-GCM; não é possível usar hash irreversível porque o painel precisa da chave para chamar cada Easypanel.
 - Execute atrás de HTTPS.
 - Ações destrutivas exigem confirmação explícita na interface.
 - Nunca prefixe `EASYPANEL_TOKEN` com `NEXT_PUBLIC_`.

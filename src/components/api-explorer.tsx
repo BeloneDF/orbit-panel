@@ -90,7 +90,7 @@ function EndpointDrawer({ endpoint, connected, onConnect, onClose }: { endpoint:
   const [confirm, setConfirm] = useState("");
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; status?: number; data?: unknown; error?: string } | null>(null);
-  const dangerous = dangerousPattern.test(endpoint.title);
+  const dangerous = endpoint.method !== "GET" && dangerousPattern.test(`${endpoint.id} ${endpoint.title} ${endpoint.path}`);
 
   async function execute(event: FormEvent) {
     event.preventDefault();

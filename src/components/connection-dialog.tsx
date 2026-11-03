@@ -1,17 +1,20 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { KeyRound, Link2, LoaderCircle, ShieldCheck, X } from "lucide-react";
+import { KeyRound, Link2, LoaderCircle, ShieldCheck, X, Server } from "lucide-react";
+import { AccessibilityModal } from "./accessibility-modal";
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  onConnected: (baseUrl: string) => void;
+  onConnected: () => void;
 };
 
 export function ConnectionDialog({ open, onClose, onConnected }: Props) {
-  const [baseUrl, setBaseUrl] = useState("");
-  const [token, setToken] = useState("");
+  const [name, setName] = useState("");
+  const [panelUrl, setPanelUrl] = useState("");
+  const [apiUrl, setApiUrl] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -22,15 +25,15 @@ export function ConnectionDialog({ open, onClose, onConnected }: Props) {
     setPending(true);
     setError("");
     try {
-      const response = await fetch("/api/session", {
+      const response = await fetch("/api/easypanel/servers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ baseUrl, token }),
+        body: JSON.stringify({ name, panelUrl, apiUrl, apiKey }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      setToken("");
-      onConnected(data.baseUrl);
+      setApiKey("");
+      onConnected();
       onClose();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Não foi possível conectar.");
@@ -40,28 +43,34 @@ export function ConnectionDialog({ open, onClose, onConnected }: Props) {
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="connect-title" onMouseDown={(e) => e.stopPropagation()}>
+    <AccessibilityModal labelledBy="connect-title" onClose={onClose}>
         <button className="icon-button modal-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button>
         <div className="modal-kicker"><ShieldCheck size={15} /> conexão protegida</div>
-        <h2 id="connect-title">Conecte seu servidor</h2>
-        <p className="modal-copy">Use a URL pública do painel e uma chave de API. A credencial fica criptografada em cookie HTTP-only e nunca entra no bundle do navegador.</p>
+        <h2 id="connect-title">Adicionar servidor</h2>
+        <p className="modal-copy">A chave é validada antes do cadastro, fica criptografada no banco e nunca volta para o navegador.</p>
         <form onSubmit={submit} className="connect-form">
           <label>
-            <span>URL da instância</span>
-            <div className="input-shell"><Link2 size={17} /><input type="url" required placeholder="https://panel.seudominio.com" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} autoFocus /></div>
+            <span>Nome do servidor</span>
+            <div className="input-shell"><Server size={17} /><input required maxLength={80} placeholder="Produção São Paulo" value={name} onChange={(e) => setName(e.target.value)} autoFocus /></div>
           </label>
           <label>
-            <span>Token da API</span>
-            <div className="input-shell"><KeyRound size={17} /><input type="password" required placeholder="Cole seu token aqui" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" /></div>
+            <span>URL do painel</span>
+            <div className="input-shell"><Link2 size={17} /><input type="url" required placeholder="https://panel.seudominio.com" value={panelUrl} onChange={(e) => setPanelUrl(e.target.value)} /></div>
+          </label>
+          <label>
+            <span>URL da API</span>
+            <div className="input-shell"><Link2 size={17} /><input type="url" required placeholder="https://panel.seudominio.com/api" value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} /></div>
+          </label>
+          <label>
+            <span>API key</span>
+            <div className="input-shell"><KeyRound size={17} /><input type="password" required placeholder="Cole sua chave aqui" value={apiKey} onChange={(e) => setApiKey(e.target.value)} autoComplete="new-password" /></div>
           </label>
           {error ? <p className="form-error">{error}</p> : null}
           <button className="primary-button full-button" disabled={pending}>
             {pending ? <LoaderCircle className="spin" size={17} /> : <ShieldCheck size={17} />}
-            {pending ? "Verificando conexão…" : "Conectar com segurança"}
+            {pending ? "Validando servidor…" : "Salvar e selecionar"}
           </button>
         </form>
-      </section>
-    </div>
+    </AccessibilityModal>
   );
 }
