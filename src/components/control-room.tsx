@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import {
@@ -14,6 +14,7 @@ import {
 import { ConnectGate } from "./connect-gate";
 import { ConnectionDialog } from "./connection-dialog";
 import { PwaInstallButton } from "./pwa-install-button";
+import { AccessibilityModal } from "./accessibility-modal";
 import { asRecord, callEasypanel, normalizeProjectsAndServices } from "@/lib/easypanel-client";
 
 const ApiExplorer = dynamic(() => import("./api-explorer"), {
@@ -70,12 +71,24 @@ export function ControlRoom({ initialConnection, actor, initialView="overview", 
   const [serverDialogOpen, setServerDialogOpen] = useState(false);
   const [serverTransition, setServerTransition] = useState<string | null>(null);
   const [serverError, setServerError] = useState("");
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const { data: navigationData } = useSWR(connection.connected ? "easypanel/overview/projects" : null, () => callEasypanel({ id: "listProjectsAndServices", method: "GET", path: "/listProjectsAndServices" }), { revalidateOnFocus: false });
   const navigationProjects = normalizeProjectsAndServices(navigationData?.data);
   const navigationCounts = { projects: navigationProjects.length, services: navigationProjects.reduce((total, project) => total + project.services.length, 0) };
 
   function navigate(next: View) { router.push(viewPaths[next]); setSidebarOpen(false); }
   function openProject(name:string){router.push(`/projetos/${encodeURIComponent(name)}`);setSidebarOpen(false)}
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setGlobalSearchOpen(true);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return <div className="app-shell">
     <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
@@ -86,13 +99,35 @@ export function ControlRoom({ initialConnection, actor, initialView="overview", 
     </aside>
     {sidebarOpen ? <button className="mobile-overlay" aria-label="Fechar menu" onClick={() => setSidebarOpen(false)} /> : null}
     <section className="content-shell">
-      <header className="topbar"><button className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu"><Menu /></button><div className="command-search" aria-label="Busca global ainda indisponível"><Search size={16} /><span>Busca global em breve</span></div><div className="topbar-right"><PwaInstallButton /><span className="connection-pill live"><i />{connection.baseUrl ? new URL(connection.baseUrl).hostname : "Instância não configurada"}</span></div></header>
+      <header className="topbar"><button className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu"><Menu /></button><button className="command-search" onClick={() => setGlobalSearchOpen(true)} aria-label="Abrir busca global"><Search size={16} /><span>Buscar no painel</span><kbd>⌘/Ctrl K</kbd></button><div className="topbar-right"><PwaInstallButton /><span className="connection-pill live"><i />{connection.baseUrl ? new URL(connection.baseUrl).hostname : "Instância não configurada"}</span></div></header>
       {serverError ? <div className="server-error-banner" role="alert">{serverError}<button onClick={() => setServerError("")} aria-label="Fechar aviso"><X size={14}/></button></div> : null}
       <ActiveView view={view} projectName={initialProject} serviceStatus={searchParams.get("status") === "online" ? "online" : "todos"} connected={connection.connected} onConnect={() => setServerDialogOpen(true)} navigate={navigate} openOnline={() => router.push("/servicos?status=online")} openProject={openProject} actorRole={actor.role} />
     </section>
     <ConnectionDialog open={serverDialogOpen} onClose={() => setServerDialogOpen(false)} onConnected={() => { setServerDialogOpen(false); setServerTransition("novo servidor"); window.requestAnimationFrame(() => window.requestAnimationFrame(() => window.location.reload())); }} />
+    {globalSearchOpen ? <GlobalSearch projects={navigationProjects} admin={actor.role === "ADMINISTRADOR"} onClose={() => setGlobalSearchOpen(false)} onNavigate={(next) => { setGlobalSearchOpen(false); navigate(next); }} onOpenProject={(name) => { setGlobalSearchOpen(false); openProject(name); }} /> : null}
     {serverTransition ? <div className="server-loading-backdrop" role="dialog" aria-modal="true" aria-labelledby="server-loading-title"><section className="server-loading-dialog"><LoaderCircle className="server-loading-icon" size={38} aria-hidden="true" /><p>CONEXÃO EASYPANEL</p><h2 id="server-loading-title">Carregando {serverTransition}</h2><small>Preparando projetos, serviços e métricas da instância.</small></section></div> : null}
   </div>;
+}
+
+function GlobalSearch({ projects, admin, onClose, onNavigate, onOpenProject }: { projects: ReturnType<typeof normalizeProjectsAndServices>; admin: boolean; onClose: () => void; onNavigate: (view: View) => void; onOpenProject: (name: string) => void }) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
+  const items = useMemo(() => {
+    const pages = nav.filter((group) => admin || group.section !== "ADMINISTRAÇÃO").flatMap((group) => group.items.map((item) => ({ id: `page-${item.id}`, label: item.label, detail: group.section, icon: item.icon, action: () => onNavigate(item.id as View) })));
+    const projectItems = projects.map((project) => ({ id: `project-${project.name}`, label: project.name, detail: "Projeto", icon: Blocks, action: () => onOpenProject(project.name) }));
+    const serviceItems = projects.flatMap((project) => project.services.map((service) => ({ id: `service-${project.name}-${service.name}`, label: service.name, detail: `${project.name} · ${service.type}`, icon: Box, action: () => onOpenProject(project.name) })));
+    return [...pages, ...projectItems, ...serviceItems];
+  }, [admin, onNavigate, onOpenProject, projects]);
+  const results = normalizedQuery ? items.filter((item) => `${item.label} ${item.detail}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery)) : items;
+
+  return <AccessibilityModal className="global-search-modal" labelledBy="global-search-title" onClose={onClose}>
+    <div className="global-search-heading"><Search size={18} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar páginas, projetos ou serviços…" aria-labelledby="global-search-title" /><kbd>Esc</kbd></div>
+    <h2 id="global-search-title">Busca global</h2>
+    <div className="global-search-results" role="listbox" aria-label="Resultados da busca">
+      {results.slice(0, 12).map((item) => { const Icon = item.icon; return <button type="button" key={item.id} onClick={item.action} role="option" aria-selected="false"><Icon size={16} /><span><b>{item.label}</b><small>{item.detail}</small></span></button>; })}
+      {!results.length ? <p>Nenhum resultado encontrado.</p> : null}
+    </div>
+  </AccessibilityModal>;
 }
 
 type ServerSummary = { id: string; name: string; panelUrl: string; apiUrl: string };
